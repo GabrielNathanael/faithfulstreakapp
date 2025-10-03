@@ -1,0 +1,12 @@
+package com.faithfulstreak.app.v1.data.local
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "history")
+data class HistoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val startDate: String,
+    val endDate: String,
+    val length: Int
+)
