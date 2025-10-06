@@ -6,9 +6,11 @@ import androidx.room.Query
 
 @Dao
 interface HistoryDao {
-    @Insert
-    suspend fun insert(history: HistoryEntity)
+    @Insert suspend fun insert(history: HistoryEntity)
 
     @Query("SELECT * FROM history ORDER BY id DESC")
     suspend fun getAll(): List<HistoryEntity>
+
+    @Query("SELECT MAX(length) FROM history")
+    suspend fun getLongestStreak(): Int?
 }
