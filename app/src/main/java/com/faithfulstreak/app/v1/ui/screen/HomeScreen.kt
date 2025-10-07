@@ -1,6 +1,7 @@
 package com.faithfulstreak.app.v1.ui.screen
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -31,6 +32,9 @@ import com.faithfulstreak.app.v1.ui.component.TargetProgressBar
 import com.faithfulstreak.app.v1.viewmodel.StreakViewModel
 import com.faithfulstreak.app.v1.viewmodel.UiEvent
 import kotlinx.coroutines.delay
+import java.time.LocalDate
+import androidx.compose.ui.text.font.FontWeight
+import com.faithfulstreak.app.v1.ui.theme.LoraFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,18 +66,23 @@ fun HomeScreen(
         vm.events.collect { ev ->
             when (ev) {
                 UiEvent.ReachedTarget -> {
-                    nextTarget = listOf(7, 14, 30, 60, 100, 365).firstOrNull { it > ui.target } ?: (ui.target + 365)
+                    nextTarget = listOf(7, 14, 30, 60, 100, 365)
+                        .firstOrNull { it > ui.target } ?: (ui.target + 365)
                     showExtend = true
                 }
+
                 UiEvent.Relapsed -> {
                     showSmoke = true
                     showConfetti = false
-                    delay(1500) // fade-out 1.5s
+                    delay(1500)
                     showSmoke = false
                 }
             }
         }
     }
+
+    // aktifkan bypass testing otomatis
+    LaunchedEffect(Unit) { vm.enableBypassTesting() }
 
     // Dialog naikkan target
     if (showExtend) {
@@ -82,10 +91,14 @@ fun HomeScreen(
             title = { Text("Target tercapai") },
             text = { Text("Naikkan target jadi $nextTarget hari?") },
             confirmButton = {
-                TextButton(onClick = { vm.extendTargetToNext(); showExtend = false }) { Text("Naikkan") }
+                TextButton(onClick = { vm.extendTargetToNext(); showExtend = false }) {
+                    Text("Naikkan")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showExtend = false }) { Text("Nanti") }
+                TextButton(onClick = { showExtend = false }) {
+                    Text("Nanti")
+                }
             }
         )
     }
@@ -105,7 +118,9 @@ fun HomeScreen(
                                 vm.setInitialTarget(t)
                                 showSetTarget = false
                             },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
                         ) {
                             Text("$t hari")
                         }
@@ -147,31 +162,49 @@ fun HomeScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Progress bar
-            val progress = if (ui.target == 0) 0f else (ui.count.toFloat() / ui.target.toFloat()).coerceIn(0f, 1f)
+            // Progress bar mingguan
+            val progress = ui.weekDays.size / 7f
             TargetProgressBar(progress = progress)
 
             Spacer(Modifier.height(10.dp))
-            WeeklyProgressRow(checkedDays = ui.weeklyDays)
+            WeeklyProgressRow(checkedDays = ui.weekDays)
             Spacer(Modifier.height(16.dp))
 
-            // Visual utama
+            // Visual utama (🔥 fire transition fix)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(260.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.BottomCenter // ✅ sejajarkan dasar api
             ) {
                 if (!showSmoke) {
-                    Crossfade(targetState = ui.count > 0, label = "fire-or-image") { isActive ->
-                        if (isActive) {
+                    val showFire = ui.count > 0
+                    Crossfade(
+                        targetState = showFire,
+                        animationSpec = tween(durationMillis = 800),
+                        label = "fire-crossfade"
+                    ) { active ->
+                        if (active) {
+                            // 🔥 Lottie fire animation
                             LottieAnimation(
                                 composition = fireComp,
                                 progress = { fireAnim },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp)
+                                    .align(Alignment.BottomCenter)
                             )
                         } else {
-                            ZeroStreakVisual()
+                            // 🧊 Static fire.png
+                            Image(
+                                painter = painterResource(id = R.drawable.fire),
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(240.dp)
+                                    .align(Alignment.BottomCenter),
+                                contentScale = ContentScale.Fit
+                            )
                         }
                     }
                 }
@@ -214,7 +247,7 @@ fun HomeScreen(
                             showConfetti = true
                         }
                     },
-                    enabled = !vm.isCheckDisabled,
+                    enabled = !(ui.last == LocalDate.now() && !ui.bypass),
                     modifier = Modifier.weight(1f)
                 ) { Text("Berhasil Hari Ini") }
 
@@ -226,6 +259,7 @@ fun HomeScreen(
 
             Spacer(Modifier.height(16.dp))
 
+            // Panel ayat
             VersePanel(
                 verseText = ui.verse.firman,
                 reference = "${ui.verse.kitab} ${ui.verse.pasal}:${ui.verse.ayat}",
@@ -237,7 +271,11 @@ fun HomeScreen(
             )
 
             Spacer(Modifier.height(16.dp))
-            Text("Target: ${ui.target} hari", style = MaterialTheme.typography.labelLarge, color = Color.White)
+            Text(
+                "Target: ${ui.target} hari",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White
+            )
         }
     }
 }
@@ -255,7 +293,7 @@ private fun WeeklyProgressRow(checkedDays: Set<Int>) {
             val fg = if (active) Color.Black else Color.White
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(bg),
                 contentAlignment = Alignment.Center
@@ -268,18 +306,6 @@ private fun WeeklyProgressRow(checkedDays: Set<Int>) {
             }
         }
     }
-}
-
-@Composable
-private fun ZeroStreakVisual() {
-    Image(
-        painter = painterResource(id = R.drawable.fire),
-        contentDescription = null,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp),
-        contentScale = ContentScale.Fit
-    )
 }
 
 @Composable
@@ -298,18 +324,31 @@ private fun VersePanel(
                 color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(16.dp)
             )
-            .pointerInput(Unit) { detectVerticalDragGestures { _, dragAmount -> onDrag(dragAmount) } }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { _, dragAmount -> onDrag(dragAmount) }
+            }
             .padding(14.dp)
     ) {
         Text(
-            text = "“$verseText”",
-            style = MaterialTheme.typography.bodyLarge,
+            text = verseText,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontFamily = LoraFamily,
+                fontWeight = FontWeight.Normal
+            ),
             color = Color.White,
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(scroll)
         )
         Spacer(Modifier.height(6.dp))
-        Text(text = "— $reference (TB)", style = MaterialTheme.typography.labelMedium, color = Color.White)
+        Text(
+            text = "— $reference (TB)",
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = LoraFamily,
+                fontWeight = FontWeight.Bold
+            ),
+            color = Color.White
+        )
+
     }
 }

@@ -30,8 +30,12 @@ class VerseProvider(private val context: Context) {
 
     fun random(): Ayat {
         if (verses.isEmpty()) {
-            return Ayat("Kejadian", 1, 1, "Pada mulanya Allah menciptakan langit dan bumi.")
+            return Ayat("1 Korintus", 10, 38, "\"Segala sesuatu diperbolehkan.\" Benar, tetapi bukan segala sesuatu berguna. \"Segala sesuatu diperbolehkan.\" Benar, tetapi bukan segala sesuatu membangun.")
         }
         return verses[Random.nextInt(verses.size)]
+    }
+
+    fun randomVerse(): Ayat {
+        return random()
     }
 }

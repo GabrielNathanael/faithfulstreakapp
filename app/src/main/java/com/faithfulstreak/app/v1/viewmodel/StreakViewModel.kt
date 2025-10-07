@@ -9,23 +9,11 @@ import com.faithfulstreak.app.v1.data.local.PrefsDataStore
 import com.faithfulstreak.app.v1.util.Ayat
 import com.faithfulstreak.app.v1.util.VerseProvider
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.temporal.WeekFields
-
-data class UiStreak(
-    val count: Int = 0,
-    val target: Int = 7,
-    val lastCheckIn: LocalDate? = null,
-    val startDate: LocalDate = LocalDate.now(),
-    val verse: Ayat = Ayat("Kejadian", 1, 1, "Pada mulanya Allah menciptakan langit dan bumi."),
-    val weeklyDays: Set<Int> = emptySet(),
-    val isActiveToday: Boolean = false
-)
 
 sealed interface UiEvent {
     data object ReachedTarget : UiEvent
@@ -35,109 +23,85 @@ sealed interface UiEvent {
 class StreakViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = PrefsDataStore(app)
-    private val db = DatabaseProvider.db(app)
     private val verseProvider = VerseProvider(app)
+    private val dao = DatabaseProvider.db(app).historyDao()
 
-    private val _ui = MutableStateFlow(UiStreak())
-    val ui: StateFlow<UiStreak> = _ui
+    val ui: StateFlow<com.faithfulstreak.app.v1.data.local.PrefSnapshot> =
+        prefs.flow.stateIn(viewModelScope, SharingStarted.Eagerly, com.faithfulstreak.app.v1.data.local.PrefSnapshot(0, null, 7, null, null, emptySet()))
 
     private val _events = MutableSharedFlow<UiEvent>()
-    val events: SharedFlow<UiEvent> = _events
+    val events = _events
 
-    init {
-        viewModelScope.launch {
-            prefs.flow.collectLatest { snap ->
-                val today = LocalDate.now()
-                val isActive = snap.last?.isEqual(today) == true
-                _ui.value = UiStreak(
-                    count = snap.count,
-                    target = snap.target,
-                    lastCheckIn = snap.last,
-                    startDate = snap.start ?: today,
-                    verse = verseProvider.randomVerse(),
-                    weeklyDays = snap.weekDays,
-                    isActiveToday = isActive
-                )
-            }
-        }
-    }
-
-    /** Tombol “Berhasil Hari Ini” */
     fun checkInToday() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            val snap = prefs.flow.replayCache.firstOrNull() ?: return@launch
+            val snap = ui.value
 
-            // bypass untuk testing
-            if (!BuildConfig.DEBUG && snap.last == today) return@launch
+            // skip kalau udah check-in hari ini
+            if (!isDebugBuild() && !snap.bypass && snap.last == today) return@launch
 
             val newCount = snap.count + 1
-            prefs.setStreak(
-                count = newCount,
-                last = today,
-                target = snap.target,
-                start = snap.start ?: today
-            )
-            prefs.markCheckedToday(today)
+            val newVerse = verseProvider.random()
 
-            db.historyDao().insert(
+            prefs.setStreak(newCount, today, snap.target, snap.start ?: today)
+            prefs.markCheckedToday(today, bypassMode = snap.bypass)
+            prefs.setVerse(newVerse)
+
+            dao.insert(
                 HistoryEntity(
-                    date = today.toString(),
-                    action = "Check-in",
-                    count = newCount
+                    startDate = (snap.start ?: today).toString(),
+                    endDate = today.toString(),
+                    length = newCount,
+                    type = "Check-in"
                 )
             )
 
-            if (newCount >= snap.target) {
-                _events.emit(UiEvent.ReachedTarget)
-            }
+            if (newCount >= snap.target) _events.emit(UiEvent.ReachedTarget)
         }
     }
 
-    /** Tombol “Relapse” */
     fun relapse() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            val snap = prefs.flow.replayCache.firstOrNull()
-            prefs.reset(last = today, keepTarget = true, currentTarget = snap?.target)
-            db.historyDao().insert(
+            prefs.reset(today, true, ui.value.target)
+            dao.insert(
                 HistoryEntity(
-                    date = today.toString(),
-                    action = "Relapse",
-                    count = 0
+                    startDate = today.toString(),
+                    endDate = today.toString(),
+                    length = 0,
+                    type = "Relapse"
                 )
             )
             _events.emit(UiEvent.Relapsed)
         }
     }
 
-    /** Naikkan target ke level berikut */
     fun extendTargetToNext() {
         viewModelScope.launch {
-            val snap = prefs.flow.replayCache.firstOrNull() ?: return@launch
+            val snap = ui.value
             val next = listOf(7, 14, 30, 60, 100, 365).firstOrNull { it > snap.target } ?: (snap.target + 365)
-            prefs.setStreak(
-                count = snap.count,
-                last = snap.last ?: LocalDate.now(),
-                target = next,
-                start = snap.start ?: LocalDate.now()
-            )
+            prefs.setStreak(snap.count, snap.last ?: LocalDate.now(), next, snap.start ?: LocalDate.now())
         }
     }
 
-    /** Set target awal saat user pertama kali buka app */
     fun setInitialTarget(target: Int) {
         viewModelScope.launch {
-            prefs.setStreak(
-                count = 0,
-                last = LocalDate.now(),
-                target = target,
-                start = LocalDate.now()
-            )
+            val today = LocalDate.now()
+            prefs.setStreak(0, today, target, today)
         }
     }
 
-    /** Bypass disable tombol check-in kalau BuildConfig.DEBUG aktif */
-    val isCheckDisabled: Boolean
-        get() = !BuildConfig.DEBUG && _ui.value.isActiveToday
+    fun enableBypassTesting() {
+        viewModelScope.launch { prefs.setBypassTesting(true) }
+    }
+
+    private fun isDebugBuild(): Boolean {
+        return try {
+            val pkg = getApplication<Application>().packageName
+            val clazz = Class.forName("$pkg.BuildConfig")
+            clazz.getField("DEBUG").getBoolean(null)
+        } catch (_: Exception) {
+            false
+        }
+    }
 }
