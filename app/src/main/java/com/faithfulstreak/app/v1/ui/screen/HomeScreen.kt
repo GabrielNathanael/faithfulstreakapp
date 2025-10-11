@@ -100,7 +100,10 @@ fun HomeScreen(
     }
 
 //    LaunchedEffect(Unit) { vm.enableBypassTesting() }
+    LaunchedEffect(Unit) {
 
+        vm.disableBypassTesting()
+    }
     // ==============================
     // DIALOG: Target Tercapai
     // ==============================
@@ -471,7 +474,7 @@ fun HomeScreen(
                         vm.checkInToday()
                         if (before + 1 == ui.target) showConfetti = true
                     },
-                    enabled = ui.target > 0 && !(ui.last == LocalDate.now() && !ui.bypass),
+                    enabled = ui.target > 0 && (ui.count == 0 || ui.last != LocalDate.now() || ui.bypass),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
+import android.util.Log
 sealed interface UiEvent {
     data object ReachedTarget : UiEvent
     data object Relapsed : UiEvent
@@ -38,7 +38,7 @@ class StreakViewModel(app: Application) : AndroidViewModel(app) {
             val snap = ui.value
 
             // skip kalau udah check-in hari ini
-            if (!isDebugBuild() && !snap.bypass && snap.last == today) return@launch
+            if (!isDebugBuild() && !snap.bypass && snap.count > 0 && snap.last == today) return@launch
 
             val newCount = snap.count + 1
             val newVerse = verseProvider.random()
@@ -98,6 +98,7 @@ class StreakViewModel(app: Application) : AndroidViewModel(app) {
     fun setTarget(target: Int) {
         viewModelScope.launch {
             val snap = ui.value
+            Log.d("StreakViewModel", "setTarget - count=${snap.count}, last=${snap.last}, target=$target")
             prefs.setStreak(snap.count, snap.last ?: LocalDate.now(), target, snap.start ?: LocalDate.now())
         }
     }
@@ -119,4 +120,10 @@ class StreakViewModel(app: Application) : AndroidViewModel(app) {
             false
         }
     }
+
+    fun disableBypassTesting() {
+        viewModelScope.launch { prefs.setBypassTesting(false) }
+    }
+
+
 }

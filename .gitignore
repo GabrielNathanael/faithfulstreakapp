@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+faithful-release-key.jks
+
+/build
+app/build

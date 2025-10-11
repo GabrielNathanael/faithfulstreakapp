@@ -20,23 +20,61 @@ android {
 
     buildFeatures { compose = true }
 
-    // HAPUS block composeOptions lama, ganti ke ini:
     composeCompiler {
         enableStrongSkippingMode.set(true)
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "21"
+        jvmTarget = "17"
     }
 
     packaging {
         resources.excludes += setOf(
-            "META-INF/DEPENDENCIES", "META-INF/NOTICE", "META-INF/LICENSE*"
+            "META-INF/DEPENDENCIES",
+            "META-INF/NOTICE",
+            "META-INF/LICENSE*"
         )
+    }
+
+    // ==============================================
+    // 🔒 SIGNING & BUILD TYPE UNTUK RELEASE
+    // ==============================================
+    signingConfigs {
+        create("release") {
+            storeFile = file("faithful-release-key.jks")
+            storePassword = "Bakwanmalang08"   // ganti sesuai password kamu
+            keyAlias = "faithful"
+            keyPassword = "Bakwanmalang08"     // ganti sesuai password kamu
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = false
+        }
+        getByName("debug") {
+            isDebuggable = true
+        }
+    }
+
+    // ==============================================
+    // 💡 AUTO NAMA FILE APK
+    // ==============================================
+    applicationVariants.all {
+        outputs.all {
+            val appName = "FaithfulStreak"
+            val buildTypeName = buildType.name
+            val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
+            output.outputFileName = "${appName}-${buildTypeName}.apk"
+        }
     }
 }
 
