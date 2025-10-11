@@ -1,19 +1,22 @@
 package com.faithfulstreak.app.v1.data.local
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HistoryDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(history: HistoryEntity)
-
     @Query("SELECT * FROM history ORDER BY id DESC")
     fun getAll(): Flow<List<HistoryEntity>>
 
+    @Query("SELECT * FROM history WHERE isCurrent = 1 LIMIT 1")
+    suspend fun getCurrentStreak(): HistoryEntity?
+
+    @Insert
+    suspend fun insert(entity: HistoryEntity)
+
+    @Update  // <- ini yang error, pastikan import androidx.room.Update ada
+    suspend fun update(entity: HistoryEntity)
+
     @Query("DELETE FROM history")
-    suspend fun clearAll()
+    suspend fun deleteAll()
 }

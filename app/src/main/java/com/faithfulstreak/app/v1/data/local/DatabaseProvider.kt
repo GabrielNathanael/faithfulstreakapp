@@ -13,7 +13,10 @@ object DatabaseProvider {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "faithful_streak_db"
-            ).build().also { INSTANCE = it }
+            )
+                .fallbackToDestructiveMigration() // <- tambah ini aja
+                .build()
+                .also { INSTANCE = it }
         }
     }
 }

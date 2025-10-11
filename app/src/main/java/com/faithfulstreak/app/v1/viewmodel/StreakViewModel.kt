@@ -47,14 +47,27 @@ class StreakViewModel(app: Application) : AndroidViewModel(app) {
             prefs.markCheckedToday(today, bypassMode = snap.bypass)
             prefs.setVerse(newVerse)
 
-            dao.insert(
-                HistoryEntity(
-                    startDate = (snap.start ?: today).toString(),
-                    endDate = today.toString(),
-                    length = newCount,
-                    type = "Check-in"
+            // Update atau create history entry untuk current streak
+            val currentStreak = dao.getCurrentStreak()
+            if (currentStreak != null) {
+                // Update existing current streak
+                dao.update(
+                    currentStreak.copy(
+                        endDate = today.toString(),
+                        streakLength = newCount
+                    )
                 )
-            )
+            } else {
+                // Create new current streak entry
+                dao.insert(
+                    HistoryEntity(
+                        startDate = (snap.start ?: today).toString(),
+                        endDate = today.toString(),
+                        streakLength = newCount,
+                        isCurrent = true
+                    )
+                )
+            }
 
             if (newCount >= snap.target) _events.emit(UiEvent.ReachedTarget)
         }
@@ -63,36 +76,38 @@ class StreakViewModel(app: Application) : AndroidViewModel(app) {
     fun relapse() {
         viewModelScope.launch {
             val today = LocalDate.now()
-            prefs.reset(today, true, ui.value.target)
-            dao.insert(
-                HistoryEntity(
-                    startDate = today.toString(),
-                    endDate = today.toString(),
-                    length = 0,
-                    type = "Relapse"
-                )
-            )
+
+            // Mark current streak as ended (isCurrent = false)
+            val currentStreak = dao.getCurrentStreak()
+            if (currentStreak != null) {
+                dao.update(currentStreak.copy(isCurrent = false))
+            }
+
+            prefs.reset(today, false, null)
             _events.emit(UiEvent.Relapsed)
         }
     }
 
-    fun extendTargetToNext() {
+    fun extendTargetTo(newTarget: Int) {
         viewModelScope.launch {
             val snap = ui.value
-            val next = listOf(7, 14, 30, 60, 100, 365).firstOrNull { it > snap.target } ?: (snap.target + 365)
-            prefs.setStreak(snap.count, snap.last ?: LocalDate.now(), next, snap.start ?: LocalDate.now())
+            prefs.setStreak(snap.count, snap.last ?: LocalDate.now(), newTarget, snap.start ?: LocalDate.now())
         }
     }
-
-    fun setInitialTarget(target: Int) {
+    // NEW: Manual set target function
+    fun setTarget(target: Int) {
         viewModelScope.launch {
-            val today = LocalDate.now()
-            prefs.setStreak(0, today, target, today)
+            val snap = ui.value
+            prefs.setStreak(snap.count, snap.last ?: LocalDate.now(), target, snap.start ?: LocalDate.now())
         }
     }
 
     fun enableBypassTesting() {
         viewModelScope.launch { prefs.setBypassTesting(true) }
+    }
+
+    fun getSingleVerse(): Ayat {
+        return verseProvider.randomSingleVerse()
     }
 
     private fun isDebugBuild(): Boolean {

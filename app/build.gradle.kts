@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.faithfulstreak.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.faithfulstreak.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         vectorDrawables { useSupportLibrary = true }
@@ -41,6 +41,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.ui.geometry)
+    implementation(libs.androidx.foundation)
     val composeBom = platform("androidx.compose:compose-bom:2024.10.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
