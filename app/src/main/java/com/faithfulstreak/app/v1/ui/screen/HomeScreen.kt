@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,7 +58,7 @@ import com.faithfulstreak.app.v1.viewmodel.StreakViewModel
 import com.faithfulstreak.app.v1.viewmodel.UiEvent
 import kotlinx.coroutines.delay
 import java.time.LocalDate
-
+import androidx.compose.foundation.layout.systemBars
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -367,7 +368,9 @@ fun HomeScreen(
                 )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+
+        contentWindowInsets = WindowInsets.systemBars
     )
     { pad ->
         Column(

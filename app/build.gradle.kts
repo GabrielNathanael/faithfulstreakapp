@@ -81,6 +81,7 @@ android {
 dependencies {
     implementation(libs.androidx.ui.geometry)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.foundation.layout)
     val composeBom = platform("androidx.compose:compose-bom:2024.10.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
