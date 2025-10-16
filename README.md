@@ -33,7 +33,7 @@ Aplikasi ini **tidak mengumpulkan data apa pun** dan berjalan sepenuhnya **offli
 
 Versi terbaru: **v1.0**
 
-📥 **[Unduh Faithful Streak v1.0 (APK)](./releases/FaithfulStreak-v1.0.apk)**
+📥 **[Unduh Faithful Streak v1.0 (APK)](https://github.com/GabrielNathanael/faithfulstreakapp/raw/main/app/build/outputs/apk/release/FaithfulStreak-release.apk)**
 
 > Aplikasi ini sudah ditandatangani (release-signed) dan bisa langsung diinstall di perangkat Android 8.0 (Oreo) ke atas.
 
